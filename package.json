@@ -1,0 +1,18 @@
+{
+  "name": "odin-members-only",
+  "version": "1.0.0",
+  "description": "A members clubhouse project for learning in odin",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Zaibbee69",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "passport": "^0.7.0",
+    "pg": "^8.22.0"
+  }
+}
