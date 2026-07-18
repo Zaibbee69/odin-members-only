@@ -2,6 +2,7 @@ const path = require("node:path");
 const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
+const bcrypt = require("bcryptjs");
 const { body, validationResult } = require("express-validator");
 
 const pool = require("./db/pool");
@@ -31,12 +32,7 @@ app.get("/", (req, res) => res.render("index"));
 
 // Login page Routes
 app.get("/login", (req, res) => res.render("login"));
-app.post("/login", (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-}, passport.authenticate("local", {
+app.post("/login", passport.authenticate("local", {
     successRedirect: "/",
     failureRedirect: "/login"
 }));
@@ -58,7 +54,8 @@ app.post("/signup", validateUser, async (req, res) => {
     if (password !== confirm_password) {
         return res.status(400).json({ errors: [{ msg: "Passwords do not match" }] });
     }
-    await pool.query("INSERT INTO users (first_name, last_name, email, password) VALUES ($1, $2, $3, $4)", [first_name, last_name, email, password]);
+    const password_hash = await bcrypt.hash(password, 10);
+    await pool.query("INSERT INTO users (first_name, last_name, email, password_hash) VALUES ($1, $2, $3, $4)", [first_name, last_name, email, password_hash]);
     res.redirect("/login");
 });
 
