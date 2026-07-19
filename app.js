@@ -2,6 +2,7 @@ const path = require("node:path");
 const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
+const LocalStrategy = require("passport-local").Strategy;
 const bcrypt = require("bcryptjs");
 const { body, validationResult } = require("express-validator");
 
@@ -14,6 +15,7 @@ app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
 app.use(session({ secret: "cats", resave: false, saveUninitialized: false }));
+app.use(passport.initialize())
 app.use(passport.session());
 app.use(express.urlencoded({ extended: false }));
 
@@ -26,19 +28,72 @@ const validateUser = [
         .isLength({ min: 1, max: 10 }).withMessage(`Last name LengthError`),
 ];
 
+// Local Strategy
+passport.use(
+    new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
+        try {
+            const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+            const user = rows[0];
+
+            if (!user) {
+                return done(null, false, { message: "Incorrect email" });
+            }
+            if (bcrypt.compareSync(password, user.password_hash) === false) {
+                return done(null, false, { message: "Incorrect password" });
+            }
+            return done(null, user);
+        } catch (err) {
+            return done(err);
+        }
+    })
+);
+
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+    try {
+        const { rows } = await pool.query(
+            "SELECT * FROM users WHERE id = $1",
+            [id]
+        );
+
+        done(null, rows[0]);
+    } catch (err) {
+        done(err);
+    }
+});
+
+
 
 // Main page Routes
 app.get("/", (req, res) => res.render("index"));
 
 // Login page Routes
-app.get("/login", (req, res) => res.render("login"));
-app.post("/login", passport.authenticate("local", {
-    successRedirect: "/",
-    failureRedirect: "/login"
-}));
+app.get("/login", (req, res) => res.render("login", { error: null }));
+app.post("/login", (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+        if (err) {
+            return next(err);
+        }
+
+        if (!user) {
+            return res.status(401).render("login", { error: info?.message || "Login failed" });
+        }
+
+        req.login(user, (loginErr) => {
+            if (loginErr) {
+                return next(loginErr);
+            }
+
+            return res.redirect("/");
+        });
+    })(req, res, next);
+});
 
 // Logout page Routes
-app.get("/logout", (req, res) => {
+app.get("/logout", (req, res, next) => {
     req.logout((err) => {
         if (err) {
             return next(err);
