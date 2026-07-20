@@ -114,7 +114,7 @@ app.post("/signup", validateUser, async (req, res) => {
         return res.status(400).json({ errors: [{ msg: "Passwords do not match" }] });
     }
     const password_hash = await bcrypt.hash(password, 10);
-    await pool.query("INSERT INTO users (first_name, last_name, email, password_hash) VALUES ($1, $2, $3, $4)", [first_name, last_name, email, password_hash]);
+    await pool.query("INSERT INTO users (first_name, last_name, email, password_hash, is_admin) VALUES ($1, $2, $3, $4, $5)", [first_name, last_name, email, password_hash, req.body.is_admin === "true"]);
     res.redirect("/login");
 });
 
@@ -131,6 +131,18 @@ app.post("/message", async (req, res) => {
     }
     const { title, message } = req.body;
     await pool.query("INSERT INTO messages (title, message, user_id) VALUES ($1, $2, $3)", [title, message, req.user.id]);
+    res.redirect("/");
+});
+app.post("/message/:id/delete", async (req, res) => {
+    if (!req.user) {
+        return res.redirect("/login");
+    }
+    if (!req.user.is_admin) {
+        return res.status(403).redirect("/");
+    }
+
+    const { id } = req.params;
+    await pool.query("DELETE FROM messages WHERE id = $1", [id]);
     res.redirect("/");
 });
 
