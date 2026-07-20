@@ -68,7 +68,11 @@ passport.deserializeUser(async (id, done) => {
 
 
 // Main page Routes
-app.get("/", (req, res) => res.render("index"));
+app.get("/", async (req, res) => {
+    const messages = await pool.query("SELECT messages.id, messages.title, messages.message, messages.created_at, users.first_name, users.last_name FROM messages JOIN users ON messages.user_id = users.id;");
+    res.render("index", { messages: messages.rows, user: req.user });
+});
+
 
 // Login page Routes
 app.get("/login", (req, res) => res.render("login", { error: null }));
@@ -114,16 +118,41 @@ app.post("/signup", validateUser, async (req, res) => {
     res.redirect("/login");
 });
 
-// Messages page Routes
-app.get("/messages", async (req, res) => {
-    const messages = await pool.query("SELECT messages.id, messages.title, messages.message, messages.created_at, users.first_name, users.last_name FROM messages JOIN users ON messages.user_id = users.id;");
-    res.render("messages", { messages: messages.rows });
+// Message Page Routes
+app.get("/message", (req, res) => {
+    if (!req.user) {
+        return res.redirect("/login");
+    }
+    res.render("message", { user: req.user });
 });
-app.post("/messages", async (req, res) => {
+app.post("/message", async (req, res) => {
+    if (!req.user) {
+        return res.redirect("/login");
+    }
     const { title, message } = req.body;
     await pool.query("INSERT INTO messages (title, message, user_id) VALUES ($1, $2, $3)", [title, message, req.user.id]);
-    res.redirect("/messages");
+    res.redirect("/");
 });
+
+// Join Club Routes
+app.get("/join-club", (req, res) => {
+    if (!req.user) {
+        return res.redirect("/login");
+    }
+    res.render("join-club", { user: req.user });
+});
+app.post("/join-club", async (req, res) => {
+    if (!req.user) {
+        return res.redirect("/login");
+    }
+    const { secret_code } = req.body;
+    if (secret_code !== "Avengers-Assemble") {
+        return res.status(400).render("join-club", { user: req.user, error: "Incorrect secret code" });
+    }
+    await pool.query("UPDATE users SET is_member = true WHERE id = $1", [req.user.id]);
+    res.redirect("/");
+});
+
 
 app.listen(3000, (error) => {
     if (error) {

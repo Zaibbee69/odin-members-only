@@ -6,6 +6,56 @@
     <title>Clubhouse</title>
 </head>
 <body>
+
     <h1>Welcome to the Clubhouse</h1>
+
+    <% if (user) { %>
+        <p>Hello, <%= user.first_name %> <%= user.last_name %>!</p>
+
+        <a href="/logout">Logout</a>
+
+<h2><a href="/message">Create Message</a></h2>        
+
+    <% } else { %>
+
+        <p>Please log in to access the clubhouse.</p>
+
+        <a href="/login">Login</a>
+        <a href="/signup">Signup</a>
+
+    <% } %>
+
+    <hr>
+
+    <h2>Messages</h2>
+
+    <% messages.forEach(message => { %>
+
+        <div>
+
+            <h3><%= message.title %></h3>
+
+            <p><%= message.message %></p>
+
+            <% if (user && user.is_member) { %>
+
+                <p>
+                    By:
+                    <%= message.first_name %>
+                    <%= message.last_name %>
+                </p>
+
+                <p>
+                    <%= new Date(message.created_at).toLocaleString() %>
+                </p>
+
+            <% } %>
+
+        </div>
+
+        <hr>
+
+    <% }) %>
+
 </body>
 </html>
